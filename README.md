@@ -1,4 +1,4 @@
-# Composer spellcheck (`@osman3n/dsh-composer-spellcheck`)
+# Composer spellcheck 
 
 Right-click a word in the message composer and get spelling suggestions, with the
 usual editing commands in the same menu.
