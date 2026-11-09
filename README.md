@@ -1,7 +1,20 @@
-# Composer spellcheck 
-
+# Composer spellcheck
 Right-click a word in the message composer and get spelling suggestions, with the
 usual editing commands in the same menu.
+
+## Install
+
+The browser half is prebuilt and committed (`client.js`), so there is no build
+step and no network access at runtime.
+
+1. In the app, open the plugin manager (Settings → Plugins) and install from a
+   local folder, pointing at a checkout of this repository.
+2. Reload the window (`Ctrl+R`). The browser half is loaded per page load, so the
+   menu only appears after a reload.
+
+For scripted installs, `dsh plugin --profile <name> add <path-or-git-url>`
+installs the package half; the profile's `dsh.profile.bundles` list also needs
+this package (the plugin manager does both steps).
 
 ## What it does
 
@@ -41,11 +54,15 @@ has no native context menu at all.
 ## Rebuild
 
 ```powershell
-cd plugins/composer-spellcheck
+# from the repository root
 node tools/prepare-words.mjs --limit=30000 --min-count=2   # only when refreshing the word list
 node tools/build-client.mjs
 node tools/test-client.mjs
 ```
+
+`prepare-words.mjs` downloads the frequency list once into `.tmp/` (git-ignored);
+the other two scripts need nothing beyond Node.js, so a fresh clone can rebuild
+`client.js` offline.
 
 Reload the app window afterwards; the browser half is loaded per page load.
 
@@ -65,3 +82,12 @@ otherwise never get suggestions.
 - Suggestions come from the bundled dictionary, not from the operating
   system's spellchecker, so the set of underlined words and the set of words
   with suggestions can differ slightly.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+The bundled word list comes from
+[FrequencyWords](https://github.com/hermitdave/FrequencyWords), which is
+distributed under CC-BY-SA; the curated misspelling table in `src/typos.json` is
+original to this project.

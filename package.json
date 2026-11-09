@@ -1,9 +1,17 @@
 {
   "name": "@osman3n/dsh-composer-spellcheck",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Right-click spelling suggestions in the message composer, with the usual cut/copy/paste/select-all/undo/redo actions kept alongside.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/osman3n/dsh-spell-suggestions.git"
+  },
+  "homepage": "https://github.com/osman3n/dsh-spell-suggestions#readme",
+  "bugs": {
+    "url": "https://github.com/osman3n/dsh-spell-suggestions/issues"
+  },
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
@@ -16,6 +24,7 @@
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
+    "LICENSE",
     "README.md"
   ],
   "dsh": {
@@ -32,9 +41,10 @@
   },
   "keywords": [
     "dsh",
-    "plugin",
+    "dsh-plugin",
+    "deepseek-harness",
     "spellcheck",
-    "composer"
-  ],
-  "license": "UNLICENSED"
+    "composer",
+    "context-menu"
+  ]
 }
