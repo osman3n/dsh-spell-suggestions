@@ -51,7 +51,7 @@ vm.createContext(sandbox);
 vm.runInContext(source, sandbox, { filename: "client.js" });
 
 if (!captured) throw new Error("module loader was not called");
-if (captured.id !== "@osman/dsh-composer-spellcheck") throw new Error("unexpected module id " + captured.id);
+if (captured.id !== "@osman3n/dsh-composer-spellcheck") throw new Error("unexpected module id " + captured.id);
 
 let contributed = null;
 const disposers = [];

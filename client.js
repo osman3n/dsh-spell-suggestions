@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-  id: "@osman/dsh-composer-spellcheck",
+  id: "@osman3n/dsh-composer-spellcheck",
   factory(require) {
     /**
      * Spellcheck suggestions for the conversation composer.
