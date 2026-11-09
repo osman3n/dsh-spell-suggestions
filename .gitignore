@@ -1,0 +1,7 @@
+# build caches (regenerate with `node tools/prepare-words.mjs --limit=30000 --min-count=2`)
+.tmp/
+
+node_modules/
+*.log
+.DS_Store
+Thumbs.db
