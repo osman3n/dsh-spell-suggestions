@@ -55,18 +55,21 @@ if (captured.id !== "@osman3n/dsh-composer-spellcheck") throw new Error("unexpec
 
 let contributed = null;
 const disposers = [];
-const ctx = {
-  get() {
-    return undefined;
+const contextMenus = {
+  register(def) {
+    contributed = def;
+    return () => disposers.push("menu");
   },
-  contextMenus: {
-    register(def) {
-      contributed = def;
-      return () => disposers.push("menu");
-    },
-    notify() {},
-    open() {},
-    close() {},
+  notify() {},
+  open() {},
+  close() {},
+};
+const ctx = {
+  // cordis: ctx.get(name) reads a service without the inject requirement, and
+  // reading ctx.<service> for anything not injected throws. The plugin must
+  // only ever go through get().
+  get(name) {
+    return name === "contextMenus" ? contextMenus : undefined;
   },
   effect(fn, label) {
     const dispose = fn();
@@ -77,6 +80,25 @@ const ctx = {
 
 const exports = captured.factory(() => ({}));
 if (typeof exports.apply !== "function") throw new Error("apply is not exported");
+
+// Regression: when the sibling context-menu plugin has not provided its
+// service yet, apply() must still activate. It used to read ctx.contextMenus
+// directly and throw, which failed the whole client entry at boot:
+// "web boot: 1 entry did not activate".
+const quiet = [];
+exports.apply({
+  get() {
+    return undefined;
+  },
+  effect(fn, label) {
+    quiet.push(label);
+    fn();
+    return () => {};
+  },
+});
+if (contributed !== null) throw new Error("contributed a menu without a menu service");
+if (quiet.length !== 1) throw new Error("unexpected effects without a menu service: " + quiet.join(","));
+
 exports.apply(ctx);
 
 const problems = [];

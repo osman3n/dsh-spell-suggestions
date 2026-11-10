@@ -431,7 +431,16 @@ window.__ModuleLoader__.load({
        */
       function ensureMenu() {
         if (menu) return menu;
-        const candidate = (ctx.get && ctx.get("contextMenus")) || ctx.contextMenus || null;
+        // `ctx.get` is the only safe lookup: touching `ctx.contextMenus`
+        // directly throws "cannot get property ... without inject", which fails
+        // the whole client entry during boot. Stay quiet and let a later
+        // right-click pick the service up once the sibling plugin provided it.
+        let candidate = null;
+        try {
+          candidate = (ctx.get && ctx.get("contextMenus")) || null;
+        } catch {
+          candidate = null;
+        }
         if (!candidate) return null;
         menu = candidate;
         if (!contributed) {
