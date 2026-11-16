@@ -14,7 +14,10 @@ let source = readFileSync(join(ROOT, "client.js"), "utf8");
 
 const NEEDLE = 'return { apply };';
 if (!source.includes(NEEDLE)) throw new Error("cannot find factory return statement");
-source = source.replace(NEEDLE, 'return { apply, __test: { suggestionsFor, dictionary, distance } };');
+source = source.replace(
+  NEEDLE,
+  "return { apply, __test: { suggestionsFor, dictionary, distance, fitMenuToViewport, menuRowContainer } };",
+);
 
 let captured = null;
 const sandbox = {
@@ -37,6 +40,8 @@ const sandbox = {
     getSelection() {
       return null;
     },
+    addEventListener() {},
+    removeEventListener() {},
   },
   document: {
     addEventListener() {},
@@ -97,7 +102,7 @@ exports.apply({
   },
 });
 if (contributed !== null) throw new Error("contributed a menu without a menu service");
-if (quiet.length !== 1) throw new Error("unexpected effects without a menu service: " + quiet.join(","));
+if (quiet.length !== 2) throw new Error("unexpected effects without a menu service: " + quiet.join(","));
 
 exports.apply(ctx);
 
@@ -108,8 +113,7 @@ const check = (label, condition, detail) => {
 
 check("contributions registered", contributed !== null);
 check("target kind", contributed && contributed.target === "composer-spellcheck", contributed && contributed.target);
-check("disposers registered", disposers.length === 2, String(disposers.length));
-check("unknown token resolves to empty", Array.isArray(contributed.resolve({ token: 12345 })) && contributed.resolve({ token: 12345 }).length === 0);
+check("disposers registered", disposers.length === 3, String(disposers.length));check("unknown token resolves to empty", Array.isArray(contributed.resolve({ token: 12345 })) && contributed.resolve({ token: 12345 }).length === 0);
 check("resolve tolerates junk", Array.isArray(contributed.resolve(null)));
 
 const { suggestionsFor, dictionary } = exports.__test;
@@ -152,6 +156,66 @@ for (const word of ["implementatoin", "configuratoin", "unnecesarily", "internat
   check(`suggestions for ${word}`, list.length > 0, "none");
 }
 console.log("timing: " + slow.join("  "));
+
+// Regression for the in-plugin fallback that keeps a tall menu reachable. The
+// shared menu already clamps and scrolls itself, so the fitter must be a no-op
+// in that case and only step in when the measured box leaves the viewport or
+// its rows overflow a container that cannot scroll.
+const { fitMenuToViewport } = exports.__test;
+
+function fakeMenu({ top = 100, height = 600, width = 200, right = 400, rows = 12, clientHeight = 600, scrollHeight = 600, overflowY = "visible" } = {}) {
+  const items = Array.from({ length: rows }, () => ({}));
+  const ownerDocument = {
+    defaultView: {
+      innerHeight: 300,
+      innerWidth: 800,
+      getComputedStyle: (element) => ({ overflowY: element.__overflowY || "visible" }),
+    },
+    documentElement: {},
+  };
+  const rowElement = {
+    ownerDocument,
+    __overflowY: overflowY,
+    clientHeight,
+    scrollHeight,
+    style: {},
+    querySelectorAll: () => items,
+  };
+  const menu = {
+    ownerDocument,
+    style: {},
+    children: [rowElement],
+    querySelectorAll: () => items,
+    getAttribute: () => null,
+    hasAttribute: () => false,
+    getBoundingClientRect: () => ({ top, bottom: top + height, height, width, right, left: right - width }),
+  };
+  return { menu, rowElement };
+}
+
+const alreadyFine = fakeMenu({ top: 20, height: 200, clientHeight: 200, scrollHeight: 200 });
+check("fit leaves a menu that already fits untouched", fitMenuToViewport(alreadyFine.menu) === false);
+check("fit did not restyle a menu that fits", !alreadyFine.menu.style.maxHeight && !alreadyFine.rowElement.style.overflowY);
+
+const hostScrolls = fakeMenu({ top: 20, height: 200, clientHeight: 200, scrollHeight: 420, overflowY: "auto" });
+check("fit trusts a container the host already made scrollable", fitMenuToViewport(hostScrolls.menu) === false);
+check("fit did not touch the host scroll container", !hostScrolls.rowElement.style.overflowY);
+
+const spills = fakeMenu({ top: 100, height: 600 });
+check("fit clamps a menu that spills past the viewport", fitMenuToViewport(spills.menu) === true);
+check("fit capped the spilled menu", /^\d+px$/.test(spills.menu.style.maxHeight || ""), spills.menu.style.maxHeight);
+check("fit made the spilled rows scroll", spills.rowElement.style.overflowY === "auto", spills.rowElement.style.overflowY);
+check("fit hid overflow on the frame", spills.menu.style.overflow === "hidden", spills.menu.style.overflow);
+
+const clipped = fakeMenu({ top: 20, height: 200, clientHeight: 200, scrollHeight: 420 });
+check("fit acts when rows overflow a clipped container", fitMenuToViewport(clipped.menu) === true);
+check("fit made clipped rows scroll", clipped.rowElement.style.overflowY === "auto");
+
+const tinyRoom = fakeMenu({ top: 280, height: 600, right: 900 });
+fitMenuToViewport(tinyRoom.menu);
+check("fit pins a menu with no room below it", tinyRoom.menu.style.top === "8px", tinyRoom.menu.style.top);
+check("fit pulls a menu back inside the window", tinyRoom.menu.style.left === "592px", tinyRoom.menu.style.left);
+
 
 if (problems.length) {
   console.error("\nFAILED");

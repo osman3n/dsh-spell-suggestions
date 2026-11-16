@@ -83,6 +83,22 @@ otherwise never get suggestions.
   system's spellchecker, so the set of underlined words and the set of words
   with suggestions can differ slightly.
 
+## Long menus
+
+A misspelled word yields up to five suggestions plus "Add to dictionary", and
+the usual cut/copy/paste/select-all/undo/redo entries follow — up to twelve rows.
+The app's shared menu clamps itself to the window and scrolls its rows, and
+while that works this plugin does not touch it.
+
+As a safety net, the menu this plugin opens is measured after it paints. If it
+would extend past the bottom of the window, or if its rows overflow a container
+that cannot scroll (a missing, renamed or overridden stylesheet), the plugin
+clamps the box to the viewport and turns the row container into a scroll area.
+Nothing is changed when the host styling already did its job, and only the menu
+carrying this plugin's own labels is ever touched — the primitive's class names
+are hashed per build and are never relied on. The check is repeated on window
+resize while the menu stays open.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

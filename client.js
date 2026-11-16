@@ -22,6 +22,10 @@ window.__ModuleLoader__.load({
     const USER_WORDS_KEY = "dsh.composer-spellcheck.user-words";
     const COMPOSER_SELECTOR = "[data-composer-input]";
     const TARGET_KIND = "composer-spellcheck";
+    /** Clear space kept above and below a menu that had to be clamped. */
+    const MENU_MARGIN = 8;
+    /** Marks the menu this plugin opened, so nothing else is ever touched. */
+    const MENU_OWNED_ATTR = "data-composer-spellcheck-menu";
 
     // ---------------------------------------------------------------------
     // Word data. The build step replaces these four placeholders with the
@@ -419,6 +423,96 @@ window.__ModuleLoader__.load({
       root.dispatchEvent(event);
     }
 
+    // ---------------------------------------------------------------------
+    // Menu fit
+    // ---------------------------------------------------------------------
+    /**
+     * The row container of a menu: the direct child that holds the items. Found
+     * by counting `[role="menuitem"]` instead of by class name, because the
+     * primitive's class names are hashed per build.
+     */
+    function menuRowContainer(menu) {
+      let best = null;
+      let bestCount = 0;
+      for (const child of menu.children) {
+        const count = child.querySelectorAll('[role="menuitem"]').length;
+        if (count > bestCount) {
+          best = child;
+          bestCount = count;
+        }
+      }
+      if (best) return best;
+      const all = menu.querySelectorAll('[role="menuitem"]');
+      return all.length > 0 ? menu : null;
+    }
+
+    function canScroll(element) {
+      const view = (element.ownerDocument && element.ownerDocument.defaultView) || window;
+      const computed = view.getComputedStyle ? view.getComputedStyle(element) : null;
+      if (!computed) return false;
+      return computed.overflowY === "auto" || computed.overflowY === "scroll";
+    }
+
+    /**
+     * Keep a long menu inside the window and reachable.
+     *
+     * The shared menu already clamps itself and scrolls its rows through its own
+     * stylesheet, and this deliberately does nothing when that worked: it only
+     * steps in once the measured box would leave the viewport, or its rows
+     * overflow a container that cannot scroll. That keeps the plugin usable when
+     * the host stylesheet is missing, renamed by a rebuild, or overridden — the
+     * list then scrolls here instead of running off the screen with its last
+     * entries unreachable.
+     *
+     * Returns true when it had to change something.
+     */
+    function fitMenuToViewport(menu) {
+      if (!menu || typeof menu.getBoundingClientRect !== "function") return false;
+      const doc = menu.ownerDocument || document;
+      const view = doc.defaultView || window;
+      const vh = view.innerHeight || (doc.documentElement && doc.documentElement.clientHeight) || 0;
+      const vw = view.innerWidth || (doc.documentElement && doc.documentElement.clientWidth) || 0;
+      if (!vh || !vw) return false;
+
+      const rows = menuRowContainer(menu);
+      if (!rows) return false;
+
+      const box = menu.getBoundingClientRect();
+      const limit = vh - MENU_MARGIN;
+      const overflowsBottom = box.bottom > limit + 0.5;
+      const rowsOverflow = rows.scrollHeight - rows.clientHeight > 1;
+      if (!overflowsBottom && !(rowsOverflow && !canScroll(rows))) return false;
+
+      const style = menu.style || (menu.style = {});
+      style.display = "flex";
+      style.flexDirection = "column";
+
+      let height = box.height;
+      if (overflowsBottom) {
+        // Shrink to the room that is actually left below the menu's own top.
+        const room = Math.floor(limit - Math.max(box.top, MENU_MARGIN));
+        if (room >= 120) {
+          height = Math.min(height, room);
+          style.maxHeight = height + "px";
+        } else {
+          // Too little room underneath: pin the box near the top instead.
+          height = Math.min(height, vh - MENU_MARGIN * 2);
+          style.top = MENU_MARGIN + "px";
+          style.maxHeight = height + "px";
+        }
+      }
+      if (box.right > vw - MENU_MARGIN + 0.5 && typeof box.width === "number") {
+        style.left = Math.max(MENU_MARGIN, Math.floor(vw - MENU_MARGIN - box.width)) + "px";
+      }
+      style.overflow = "hidden";
+
+      const rowStyle = rows.style || (rows.style = {});
+      rowStyle.overflowY = "auto";
+      rowStyle.minHeight = "0";
+      rowStyle.flex = "1 1 auto";
+      return true;
+    }
+
     function apply(ctx) {
       let menu = null;
       let contributed = false;
@@ -494,6 +588,56 @@ window.__ModuleLoader__.load({
       const sessions = new Map();
       let nextToken = 0;
 
+      /**
+       * The menu is rendered by the shared primitive, so it can only be located
+       * once React paints it. It is recognised as "the one that appeared when we
+       * opened" plus one of the action labels this plugin contributes — never by
+       * the primitive's hashed class names, which change on every rebuild.
+       */
+      function openMenus() {
+        const found = document.querySelectorAll('[role="menu"][data-context-menu]');
+        return Array.prototype.slice.call(found);
+      }
+
+      function carriesOurActions(node) {
+        const labels = [t("menu.copy"), t("menu.selectAll"), t("menu.addToDictionary")];
+        const buttons = node.querySelectorAll('button[role="menuitem"]');
+        for (const button of buttons) {
+          if (labels.indexOf((button.textContent || "").trim()) !== -1) return true;
+        }
+        return false;
+      }
+
+      /**
+       * Measure our menu after the primitive paints it and apply the fallback
+       * only if its own styling left it unusable. Retried for a few frames
+       * because the menu animates in.
+       *
+       * A menu is "ours" only if it was not on screen before this right-click
+       * and it carries one of the labels contributed here. That keeps a menu
+       * that is still animating out from being mistaken for the new one.
+       */
+      function scheduleMenuFit(before) {
+        let frames = 0;
+        const step = () => {
+          frames += 1;
+          const candidate =
+            openMenus().filter(
+              (node) => (!before || before.indexOf(node) === -1) && carriesOurActions(node),
+            )[0] || null;
+          if (candidate) {
+            // Only one of these menus is ever open, so an older tag is stale.
+            for (const node of openMenus()) {
+              if (node !== candidate && node.hasAttribute(MENU_OWNED_ATTR)) node.removeAttribute(MENU_OWNED_ATTR);
+            }
+            candidate.setAttribute(MENU_OWNED_ATTR, "1");
+            fitMenuToViewport(candidate);
+          }
+          if (!candidate && frames < 4) requestAnimationFrame(step);
+        };
+        requestAnimationFrame(step);
+      }
+
       function remember(session) {
         sessions.set(session.token, session);
         while (sessions.size > 6) {
@@ -542,7 +686,9 @@ window.__ModuleLoader__.load({
         remember(session);
 
         try {
+          const before = openMenus();
           service.open({ kind: TARGET_KIND, value: { token: session.token } }, { x: event.clientX, y: event.clientY });
+          scheduleMenuFit(before);
         } catch (error) {
           console.warn("[composer-spellcheck] could not open menu", error);
         }
@@ -665,6 +811,17 @@ window.__ModuleLoader__.load({
         document.addEventListener("contextmenu", onContextMenu, true);
         return () => document.removeEventListener("contextmenu", onContextMenu, true);
       }, "composer-spellcheck right-click listener");
+
+      // A menu that is still open must be re-measured when the window changes
+      // shape, otherwise it can end up taller than the new viewport.
+      ctx.effect(() => {
+        const onResize = () => {
+          const current = document.querySelector("[" + MENU_OWNED_ATTR + "]");
+          if (current) fitMenuToViewport(current);
+        };
+        window.addEventListener("resize", onResize);
+        return () => window.removeEventListener("resize", onResize);
+      }, "composer-spellcheck menu resize listener");
 
       // Contribute the extra actions right away when the service is already
       // up; otherwise the first right-click inside the composer does it.
