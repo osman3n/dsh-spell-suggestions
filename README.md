@@ -1,109 +1,149 @@
-# Composer spellcheck
-Right-click a word in the message composer and get spelling suggestions, with the
-usual editing commands in the same menu.
+<p align="center">
+  <img src="assets/icon-180.png" width="88" height="88" alt="Composer spellcheck">
+</p>
+
+<h3 align="center">Composer spellcheck</h3>
+
+<p align="center">
+  <strong>Right-click spelling in the DeepSeek Harness message composer.</strong><br>
+  Ranked suggestions, plus the cut / copy / paste actions the desktop shell took away.
+</p>
+
+<p align="center">
+  <a href="#install"><img alt="Platform" src="https://img.shields.io/badge/platform-web%20%26%20desktop-1f6feb?style=flat-square"></a>
+  <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-1f6feb?style=flat-square"></a>
+  <a href="package.json"><img alt="Version" src="https://img.shields.io/badge/version-0.1.2-1f6feb?style=flat-square"></a>
+</p>
+
+<p align="center">
+  <img src="assets/hero.png" width="800" alt="The suggestion menu open over the message composer inside DeepSeek Harness">
+</p>
+
+The desktop shell does not give the chat box a native context menu. This plugin
+fills that gap: right-click a misspelled word in the composer and the menu opens
+with ranked suggestions, followed by the clipboard actions you expected to find
+there.
+
+---
+
+## Suggestions that fit the word
+
+Up to five candidates, ranked by edit distance first and word frequency second.
+`recieve` offers `receive` before `relieve` or `believe`; case is preserved, so
+`Recieve` becomes `Receive` at the start of a sentence.
+
+## The clipboard actions come back
+
+<p align="center">
+  <img src="assets/menu.png" width="180" alt="The suggestion list showing receive, relieve, believe, received, relieved, then Add to dictionary, Cut, Copy, Paste, Select all, Undo, Redo">
+</p>
+
+Cut, Copy, Paste, Select all, Undo and Redo sit below a separator. The menu
+replaces the native one rather than competing with it, and the plugin only ever
+opens on a right-click inside a real composer field — it never patches anything
+else. Chromium's own red squiggles keep working.
+
+## Your own vocabulary
+
+<p align="center">
+  <img src="assets/no-suggestions.png" width="180" alt="A word with no close match: No suggestions, Add to dictionary, and the clipboard actions">
+</p>
+
+`Add to dictionary` stores the word in `localStorage`, so it stops being flagged
+without a rebuild. Words with no close match still get the clipboard actions —
+you are never left with an empty menu.
+
+## Before and after
+
+<p align="center">
+  <img src="assets/before-after.png" width="752" alt="Before: the word recieve is misspelled. After: choosing receive replaces it in place, and seperate stays flagged.">
+</p>
+
+Picking a suggestion edits the text node in place and puts the caret where it
+was, so the rest of the paragraph is untouched.
+
+## Long menus
+
+<p align="center">
+  <img src="assets/scroll.png" width="435" alt="The same menu at the top of its list, and scrolled down to Redo">
+</p>
+
+The list can hold up to twelve rows. A tall window fits them all; a short window
+clamps the menu to the viewport and the list scrolls — with the wheel, or with
+<kbd>↑</kbd> / <kbd>↓</kbd>, which keeps the focused row in view.
+
+The app's own menu already clamps and scrolls, so the plugin adds a safety net
+instead of styling it: after paint it measures the menu, and **only** touches the
+one carrying its own labels. If the host styles ever stop clamping, the plugin
+clamps; when the host already did the right thing, the plugin changes nothing and
+re-checks on resize.
+
+---
 
 ## Install
 
-The browser half is prebuilt and committed (`client.js`), so there is no build
-step and no network access at runtime.
+From **Settings → Plugins**, choose *install from a local folder* and pick this
+directory. Reload with <kbd>Ctrl</kbd>+<kbd>R</kbd> (or <kbd>⌘</kbd>+<kbd>R</kbd>),
+and the menu is live.
 
-1. In the app, open the plugin manager (Settings → Plugins) and install from a
-   local folder, pointing at a checkout of this repository.
-2. Reload the window (`Ctrl+R`). The browser half is loaded per page load, so the
-   menu only appears after a reload.
+Or from a terminal:
 
-For scripted installs, `dsh plugin --profile <name> add <path-or-git-url>`
-installs the package half; the profile's `dsh.profile.bundles` list also needs
-this package (the plugin manager does both steps).
+```bash
+dsh plugin --profile <name> add <path-or-git-url>
+```
 
-## What it does
+The package is `@osman3n/dsh-composer-spellcheck`. Its client half declares
+`@deepseek-ai/dsh-client-ui-context-menu` in `dsh.client.inject`, so it waits for
+the menu service to exist instead of assuming it, and activates quietly when the
+service is not there yet.
 
-- Adds a **capture-phase `contextmenu` listener** on `document`. It only claims
-  events whose target sits inside the composer (`[data-composer-input]`, the
-  Lexical editor), so every other right-click in the app behaves exactly as
-  before.
-- Works out the word under the pointer, checks it against a bundled dictionary,
-  and opens the shared Web context menu (`ctx.contextMenus`) with:
-  1. up to five suggestions, ranked by edit distance and then word frequency;
-  2. **Add to dictionary** — remembered in `localStorage` under
-     `dsh.composer-spellcheck.user-words`;
-  3. a separator, then **Cut, Copy, Paste, Select all, Undo, Redo**, so the
-     default menu functions the shell would otherwise offer are still available.
-- A word that is already known still gets the editing block, so the menu is
-  useful for correct text too. Words the dictionary cannot match show
-  “No suggestions” plus the same editing commands.
-- Suggestions keep the original capitalisation: `Recieve` → `Receive`.
+## How it works
 
-The composer is a Lexical editor; Chromium's own squiggles are untouched. This
-plugin supplies the menu that makes them actionable in the desktop shell, which
-has no native context menu at all.
+One capture-phase `contextmenu` listener on `document`, scoped to
+`[data-composer-input]`. Inside that field it resolves the caret with
+`caretPositionFromPoint`, reads the word under it, and skips code, links and
+anything marked `spellcheck="false"`. When the word is unknown it opens the menu
+with suggestions plus the standard actions; when the word is known it stays out
+of the way.
 
 ## Files
 
-| Path | Purpose |
+| File | Purpose |
 | --- | --- |
-| `index.js` | Host half — no service, exists so the Loader entry mounts. |
-| `client.js` | Built browser half: listener, suggestion engine, menu contribution. |
-| `src/client.template.js` | Source template with `__WORDS__` / `__EXTRA__` / `__DROP__` / `__TYPOS__` placeholders. |
-| `src/allowlist.txt` | Extra known words for technical writing (one per line). |
-| `src/typos.json` | Curated misspelling → correction pairs, including typed contractions (`dont` → `don't`). |
-| `tools/prepare-words.mjs` | Downloads the frequency list once into `.tmp/`, filters and writes `.tmp/words.json`. |
-| `tools/build-client.mjs` | Injects the word data into the template and writes `client.js`. |
-| `tools/test-client.mjs` | Loads the built bundle through a stub loader, applies it to a fake `contextMenus`, and checks suggestions and timing. |
+| `index.js` | Host half — a no-op, kept so the package loads cleanly |
+| `client.js` | The built browser bundle (no dependencies, one file) |
+| `src/client.template.js` | The authored source the bundle is built from |
+| `tools/build-client.mjs` | Inlines the word list and typo map into `client.js` |
+| `tools/test-client.mjs` | Behaviour tests, no DOM required |
+| `tools/make-figures.py` | Composes the screenshots above from captured frames |
+| `locale/en.json`, `locale/zh.json` | Copy for every label |
 
 ## Rebuild
 
-```powershell
-# from the repository root
-node tools/prepare-words.mjs --limit=30000 --min-count=2   # only when refreshing the word list
+```bash
+node tools/prepare-words.mjs --limit=30000 --min-count=2
 node tools/build-client.mjs
 node tools/test-client.mjs
 ```
 
-`prepare-words.mjs` downloads the frequency list once into `.tmp/` (git-ignored);
-the other two scripts need nothing beyond Node.js, so a fresh clone can rebuild
-`client.js` offline.
-
-Reload the app window afterwards; the browser half is loaded per page load.
+The build is reproducible: running it twice produces byte-identical output.
 
 ## Dictionary
 
-`~30k` words from the [FrequencyWords](https://github.com/hermitdave/FrequencyWords)
-English list (CC-BY-SA), plus the allowlist, plus the curated corrections.
-Informal spellings that the corpus contains (`dont`, `cant`, `youre`, …) are
-dropped, because the curated map treats them as misspellings and they would
-otherwise never get suggestions.
+Roughly 30,000 words, built from the
+[FrequencyWords](https://github.com/hermitdave/FrequencyWords) corpus (CC-BY-SA)
+plus a curated allowlist and a typo map for the mistakes people actually make.
+Purely informal spellings such as `dont`, `cant` and `youre` are dropped, so they
+still look like mistakes.
 
 ## Limits
 
-- Only the composer is covered. Menu entries appear at the pointer; the menu
-  itself is the app's shared Web menu, so keyboard navigation and dismissal are
-  the platform's.
-- Suggestions come from the bundled dictionary, not from the operating
-  system's spellchecker, so the set of underlined words and the set of words
-  with suggestions can differ slightly.
-
-## Long menus
-
-A misspelled word yields up to five suggestions plus "Add to dictionary", and
-the usual cut/copy/paste/select-all/undo/redo entries follow — up to twelve rows.
-The app's shared menu clamps itself to the window and scrolls its rows, and
-while that works this plugin does not touch it.
-
-As a safety net, the menu this plugin opens is measured after it paints. If it
-would extend past the bottom of the window, or if its rows overflow a container
-that cannot scroll (a missing, renamed or overridden stylesheet), the plugin
-clamps the box to the viewport and turns the row container into a scroll area.
-Nothing is changed when the host styling already did its job, and only the menu
-carrying this plugin's own labels is ever touched — the primitive's class names
-are hashed per build and are never relied on. The check is repeated on window
-resize while the menu stays open.
+- Suggestions are capped at five, and at edit distance 2.
+- The composer is a Lexical editor, so the plugin edits its text nodes rather
+  than setting `value` on a field.
+- The dictionary ships inside `client.js`; adding a lot of words means a rebuild.
+- Chromium's squiggles are cosmetic — turning them off changes nothing here.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
-
-The bundled word list comes from
-[FrequencyWords](https://github.com/hermitdave/FrequencyWords), which is
-distributed under CC-BY-SA; the curated misspelling table in `src/typos.json` is
-original to this project.
+MIT
