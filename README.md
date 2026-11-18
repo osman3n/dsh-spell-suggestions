@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/icon-180.png" width="88" height="88" alt="Composer spellcheck">
+  <img src="assets/icon-180.png" width="88" height="88" alt="Spell suggestions">
 </p>
 
-<h3 align="center">Composer spellcheck</h3>
+<h3 align="center">Spell suggestions</h3>
 
 <p align="center">
   <strong>Right-click spelling in the DeepSeek Harness message composer.</strong><br>
@@ -12,7 +12,7 @@
 <p align="center">
   <a href="#install"><img alt="Platform" src="https://img.shields.io/badge/platform-web%20%26%20desktop-1f6feb?style=flat-square"></a>
   <a href="LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-1f6feb?style=flat-square"></a>
-  <a href="package.json"><img alt="Version" src="https://img.shields.io/badge/version-0.1.2-1f6feb?style=flat-square"></a>
+  <a href="package.json"><img alt="Version" src="https://img.shields.io/badge/version-0.2.0-1f6feb?style=flat-square"></a>
 </p>
 
 <p align="center">
@@ -23,6 +23,10 @@ The desktop shell does not give the chat box a native context menu. This plugin
 fills that gap: right-click a misspelled word in the composer and the menu opens
 with ranked suggestions, followed by the clipboard actions you expected to find
 there.
+
+<p align="center">
+  <strong>English</strong> · <a href="README.zh-CN.md">简体中文</a>
+</p>
 
 ---
 
@@ -92,7 +96,7 @@ Or from a terminal:
 dsh plugin --profile <name> add <path-or-git-url>
 ```
 
-The package is `@osman3n/dsh-composer-spellcheck`. Its client half declares
+The package is `@osman3n/dsh-spell-suggestions`. Its client half declares
 `@deepseek-ai/dsh-client-ui-context-menu` in `dsh.client.inject`, so it waits for
 the menu service to exist instead of assuming it, and activates quietly when the
 service is not there yet.
@@ -147,3 +151,11 @@ still look like mistakes.
 ## License
 
 MIT
+
+## Upgrading from the old name
+
+The plugin used to be published as `@osman3n/dsh-composer-spellcheck` (the
+repository was always `dsh-spell-suggestions`). The localStorage key moved from
+`dsh.composer-spellcheck.user-words` to `dsh.spell-suggestions.user-words`, but
+reads fall back to the old key, so words you already added stay in your
+dictionary.

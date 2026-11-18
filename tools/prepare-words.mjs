@@ -1,5 +1,5 @@
 /**
- * Prepare the embedded English vocabulary for the composer spellcheck plugin.
+ * Prepare the embedded English vocabulary for the spell-suggestions plugin.
  *
  * Downloads a public frequency list once, keeps ordinary lowercase words with
  * their corpus rank, and writes `.tmp/words.json` (rank order). The client
@@ -23,7 +23,7 @@ async function sourceText() {
   try {
     return await readFile(CACHE, 'utf8');
   } catch {
-    const response = await fetch(SOURCE, { headers: { 'user-agent': 'dsh-composer-spellcheck' } });
+    const response = await fetch(SOURCE, { headers: { 'user-agent': 'dsh-spell-suggestions' } });
     if (!response.ok) throw new Error(`download failed: ${response.status} ${SOURCE}`);
     const text = await response.text();
     await mkdir(dirname(CACHE), { recursive: true });

@@ -7,8 +7,8 @@ That keeps the screenshots crisp on high-DPI screens instead of soft.
 import os
 from PIL import Image, ImageDraw, ImageFont
 
-SRC = "plugins/composer-spellcheck/.shots/final"
-OUT = "plugins/composer-spellcheck/assets"
+SRC = "plugins/spell-suggestions/.shots/final"
+OUT = "plugins/spell-suggestions/assets"
 
 FONT_PATHS = ["C:/Windows/Fonts/segoeuisb.ttf", "C:/Windows/Fonts/segoeui.ttf", "C:/Windows/Fonts/arialbd.ttf"]
 

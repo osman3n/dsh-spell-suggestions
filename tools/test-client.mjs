@@ -56,7 +56,7 @@ vm.createContext(sandbox);
 vm.runInContext(source, sandbox, { filename: "client.js" });
 
 if (!captured) throw new Error("module loader was not called");
-if (captured.id !== "@osman3n/dsh-composer-spellcheck") throw new Error("unexpected module id " + captured.id);
+if (captured.id !== "@osman3n/dsh-spell-suggestions") throw new Error("unexpected module id " + captured.id);
 
 let contributed = null;
 const disposers = [];
@@ -112,7 +112,7 @@ const check = (label, condition, detail) => {
 };
 
 check("contributions registered", contributed !== null);
-check("target kind", contributed && contributed.target === "composer-spellcheck", contributed && contributed.target);
+check("target kind", contributed && contributed.target === "spell-suggestions", contributed && contributed.target);
 check("disposers registered", disposers.length === 3, String(disposers.length));check("unknown token resolves to empty", Array.isArray(contributed.resolve({ token: 12345 })) && contributed.resolve({ token: 12345 }).length === 0);
 check("resolve tolerates junk", Array.isArray(contributed.resolve(null)));
 

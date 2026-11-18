@@ -1,6 +1,6 @@
 {
-  "name": "@osman3n/dsh-composer-spellcheck",
-  "version": "0.1.2",
+  "name": "@osman3n/dsh-spell-suggestions",
+  "version": "0.2.0",
   "type": "module",
   "description": "Right-click spelling suggestions in the message composer, with the usual cut/copy/paste/select-all/undo/redo actions kept alongside.",
   "license": "MIT",
@@ -26,6 +26,7 @@
     "icon.svg",
     "LICENSE",
     "README.md",
+    "README.zh-CN.md",
     "assets/*.png"
   ],
   "dsh": {

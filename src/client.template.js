@@ -1,5 +1,5 @@
 window.__ModuleLoader__.load({
-  id: "@osman3n/dsh-composer-spellcheck",
+  id: "@osman3n/dsh-spell-suggestions",
   factory(require) {
     /**
      * Spellcheck suggestions for the conversation composer.
@@ -19,13 +19,15 @@ window.__ModuleLoader__.load({
     const MAX_SUGGESTIONS = 5;
     const MAX_DISTANCE = 2;
     /** Words the user explicitly accepted from this menu. */
-    const USER_WORDS_KEY = "dsh.composer-spellcheck.user-words";
+    const USER_WORDS_KEY = "dsh.spell-suggestions.user-words";
+    /** Where the same list lived before the package was renamed. */
+    const LEGACY_USER_WORDS_KEY = "dsh.composer-spellcheck.user-words";
     const COMPOSER_SELECTOR = "[data-composer-input]";
-    const TARGET_KIND = "composer-spellcheck";
+    const TARGET_KIND = "spell-suggestions";
     /** Clear space kept above and below a menu that had to be clamped. */
     const MENU_MARGIN = 8;
     /** Marks the menu this plugin opened, so nothing else is ever touched. */
-    const MENU_OWNED_ATTR = "data-composer-spellcheck-menu";
+    const MENU_OWNED_ATTR = "data-spell-suggestions-menu";
 
     // ---------------------------------------------------------------------
     // Word data. The build step replaces these four placeholders with the
@@ -110,7 +112,9 @@ window.__ModuleLoader__.load({
 
     function loadUserWords() {
       try {
-        const raw = window.localStorage.getItem(USER_WORDS_KEY);
+        const raw =
+          window.localStorage.getItem(USER_WORDS_KEY) ||
+          window.localStorage.getItem(LEGACY_USER_WORDS_KEY);
         if (!raw) return [];
         const parsed = JSON.parse(raw);
         return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string") : [];
@@ -540,8 +544,8 @@ window.__ModuleLoader__.load({
         if (!contributed) {
           contributed = true;
           ctx.effect(
-            () => menu.register({ id: "composer-spellcheck", target: TARGET_KIND, order: 10, resolve }),
-            "composer-spellcheck menu contribution",
+            () => menu.register({ id: "spell-suggestions", target: TARGET_KIND, order: 10, resolve }),
+            "spell-suggestions menu contribution",
           );
         }
         return menu;
@@ -550,13 +554,13 @@ window.__ModuleLoader__.load({
       const locale = (ctx.get && ctx.get("locale")) || null;
       if (locale && typeof locale.register === "function") {
         try {
-          locale.register("composer-spellcheck", "en", EN);
-          locale.register("composer-spellcheck", "zh", ZH);
+          locale.register("spell-suggestions", "en", EN);
+          locale.register("spell-suggestions", "zh", ZH);
         } catch (error) {
-          console.warn("[composer-spellcheck] locale registration failed", error);
+          console.warn("[spell-suggestions] locale registration failed", error);
         }
       }
-      const translator = locale && typeof locale.bind === "function" ? locale.bind("composer-spellcheck") : null;
+      const translator = locale && typeof locale.bind === "function" ? locale.bind("spell-suggestions") : null;
       const t = (key, vars) => {
         if (translator) {
           try {
@@ -690,7 +694,7 @@ window.__ModuleLoader__.load({
           service.open({ kind: TARGET_KIND, value: { token: session.token } }, { x: event.clientX, y: event.clientY });
           scheduleMenuFit(before);
         } catch (error) {
-          console.warn("[composer-spellcheck] could not open menu", error);
+          console.warn("[spell-suggestions] could not open menu", error);
         }
       }
 
@@ -810,7 +814,7 @@ window.__ModuleLoader__.load({
       ctx.effect(() => {
         document.addEventListener("contextmenu", onContextMenu, true);
         return () => document.removeEventListener("contextmenu", onContextMenu, true);
-      }, "composer-spellcheck right-click listener");
+      }, "spell-suggestions right-click listener");
 
       // A menu that is still open must be re-measured when the window changes
       // shape, otherwise it can end up taller than the new viewport.
@@ -821,7 +825,7 @@ window.__ModuleLoader__.load({
         };
         window.addEventListener("resize", onResize);
         return () => window.removeEventListener("resize", onResize);
-      }, "composer-spellcheck menu resize listener");
+      }, "spell-suggestions menu resize listener");
 
       // Contribute the extra actions right away when the service is already
       // up; otherwise the first right-click inside the composer does it.
